@@ -73,7 +73,9 @@ Export-NSPFortiGateVpnReport -Path .\captures\*.txt -Tunnel 'Dialup-IKEv2' `
     -OutputPath .\Dialup-IKEv2.html
 ```
 
-Writes `Dialup-IKEv2.html` and `Dialup-IKEv2.xlsx`. In the HTML, each sheet
+Writes `Dialup-IKEv2.html` and `Dialup-IKEv2.xlsx`. Secrets are never written, but the
+report still maps a network's VPN rules, addresses, and AD groups: handle it as
+confidential. In the HTML, each sheet
 starts on a new printed page (landscape), so the printout can be separated and
 cross-referenced. In the workbook, each sheet is its own tab after an About
 tab, with the header row frozen and filterable.
