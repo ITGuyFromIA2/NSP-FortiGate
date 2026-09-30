@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 (2026-09-30)
+
+- The VPN report's cover has an **NPS server** block: the RADIUS clients in
+  `ias.xml` (name, address, disabled), after any `-NpsFacts` label/value pairs
+  (such as the server name or NPS Extension version). Shared secrets are still
+  never read.
+- New Check: an address the FortiGate sends RADIUS from that isn't an enabled
+  NPS RADIUS client. NPS drops those requests silently. Addresses come from
+  `-RadiusSourceIp` and from `set source-ip` on the RADIUS servers the tunnel's
+  user groups match on. RADIUS clients defined as a range are honored.
+- The workbook's About tab lists the NPS server block as `NPS: <label>` rows.
+
 ## 0.1.0 (2026-09-30)
 
 First public release. Reads FortiGate configuration backups and CLI console

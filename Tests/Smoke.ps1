@@ -180,6 +180,27 @@ try {
     Assert-Equal @($data.Checks | Where-Object { $_ -like "*'NSPIKEv2Contractors' auto-enrolls*no TameMyCerts OU stamp*" }).Count 1 'Check: template without OU stamp'
     Assert-Equal @($data.Checks | Where-Object { $_ -like '1 TameMyCerts policy file(s) match no certificate template in AD: NSPIKEv2Retired (OU=vpn-retired)*' }).Count 1 'Check: TameMyCerts policy without a template'
     Assert-Equal @($data.Sheets[7].Notes | Where-Object { $_ -like '*no certificate template of that name in AD: NSPIKEv2Retired*' }).Count 1 'Template sheet notes the orphan TameMyCerts policy'
+    # RADIUS clients (never their secrets) and the addresses the FortiGate sends RADIUS from.
+    Assert-Equal $data.NpsFacts['RADIUS clients'] 'Example-FW (192.0.2.1)' 'NPS server: RADIUS clients from ias.xml'
+    Assert-Equal @($data.Checks | Where-Object { $_ -like '*sends RADIUS from*' }).Count 0 'No RADIUS source check without a source address'
+    $inModule = { param($Block, $Arguments) & (Get-Module NSP.FortiGate) $Block @Arguments }
+    Assert-Equal (& $inModule { param($i, $a) Test-NSPFortiGateAddressMatch -Ip $i -Address $a } @('10.99.4.5', '10.99.0.0/16')) $true 'Address inside a RADIUS client range'
+    Assert-Equal (& $inModule { param($i, $a) Test-NSPFortiGateAddressMatch -Ip $i -Address $a } @('10.98.4.5', '10.99.0.0/16')) $false 'Address outside a RADIUS client range'
+    Assert-Equal (& $inModule { param($i, $a) Test-NSPFortiGateAddressMatch -Ip $i -Address $a } @('10.0.0.1', '0.0.0.0/0')) $true '/0 matches everything'
+    $sourceIpFixture = Join-Path $work 'radius-source-ip.txt'
+    [IO.File]::WriteAllText($sourceIpFixture, ([IO.File]::ReadAllText($fixture) -replace '(?m)^(\s*)set nas-ip 192\.0\.2\.1', "`$1set nas-ip 192.0.2.1`r`n`$1set source-ip 198.51.100.7"))
+    $srcData = & $inModule { param($f, $n) Get-NSPFortiGateVpnReportData -Path $f -Tunnel 'Tunnel-VPN' -NpsConfig $n -RadiusSourceIp '192.0.2.1' } @($sourceIpFixture, $npsFixture)
+    Assert-Equal @($srcData.Checks | Where-Object { $_ -like "The FortiGate sends RADIUS from 198.51.100.7 (source-ip of RADIUS server 'RADIUS-1'), which is not a RADIUS client*" }).Count 1 "Check: a RADIUS server's source-ip that isn't an NPS client"
+    Assert-Equal @($srcData.Checks | Where-Object { $_ -like '*sends RADIUS from 192.0.2.1*' }).Count 0 'A given source address that is a client raises no check'
+    $disabledNps = Join-Path $work 'ias-disabled-client.xml'
+    [IO.File]::WriteAllText($disabledNps, ([IO.File]::ReadAllText($npsFixture) -replace '(<IP_Address [^>]*>192\.0\.2\.1</IP_Address>)', '$1<Radius_Client_Enabled xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="boolean">0</Radius_Client_Enabled>'))
+    $offData = & $inModule { param($f, $n) Get-NSPFortiGateVpnReportData -Path $f -Tunnel 'Tunnel-VPN' -NpsConfig $n -RadiusSourceIp '192.0.2.1' } @($fixture, $disabledNps)
+    Assert-Equal @($offData.Checks | Where-Object { $_ -like "*sends RADIUS from 192.0.2.1 (given as the RADIUS source address), but its RADIUS client 'Example-FW' is disabled*" }).Count 1 'Check: the RADIUS client is disabled'
+    Assert-Equal $offData.NpsFacts['RADIUS clients'] 'Example-FW (192.0.2.1, disabled)' 'Disabled RADIUS client marked on the cover'
+    $factsReport = @(Export-NSPFortiGateVpnReport -Path $fixture -Tunnel 'Tunnel-VPN' -NpsConfig $npsFixture -NpsFacts ([ordered]@{ 'Server' = 'NPS01 (example.com)'; 'NPS Extension' = '1.2.2893.1'; 'Blank' = '' }) -OutputPath (Join-Path $work 'facts.html'))
+    $factsHtml = [IO.File]::ReadAllText($factsReport[0].FullName)
+    Assert-Equal ($factsHtml -match '<h2>NPS server</h2><dl><dt>Server</dt><dd>NPS01 \(example\.com\)</dd><dt>NPS Extension</dt><dd>1\.2\.2893\.1</dd><dt>RADIUS clients</dt>') $true 'Cover: NPS server facts in order, then RADIUS clients'
+    Assert-Equal ($factsHtml -match '<dt>Blank</dt>') $false 'Cover: blank NPS facts left off'
     $full = @(Export-NSPFortiGateVpnReport -Path $fixture -Tunnel 'Tunnel-VPN' -NpsConfig $npsFixture -AdInventory $adFixture -OutputPath $reportPath)
     Assert-Equal ([IO.File]::ReadAllText($full[0].FullName) -match 'exampleonly') $false 'NPS client secret never reaches the report'
     Add-Type -AssemblyName System.IO.Compression.FileSystem

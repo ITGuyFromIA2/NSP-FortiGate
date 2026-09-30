@@ -81,7 +81,8 @@ cross-referenced. In the workbook, each sheet is its own tab after an About
 tab, with the header row frozen and filterable.
 
 The report has a cover followed by nine sheets. The cover lists the tunnel's
-settings and a **Checks** list of mismatches found along the way.
+settings, the NPS server (with `-NpsConfig`), and a **Checks** list of
+mismatches found along the way.
 
 | Sheet | Needs | Content |
 |---|---|---|
@@ -97,13 +98,22 @@ settings and a **Checks** list of mismatches found along the way.
 
 The two extra sources:
 - **`-NpsConfig`:** a copy of the NPS server's `C:\Windows\System32\ias\ias.xml`,
-  or a `netsh nps export`. Only policies and profiles are read; RADIUS client
-  entries, which hold shared secrets, are not.
+  or a `netsh nps export`. Policies, profiles, and each RADIUS client's name,
+  address, and enabled state are read. Shared secrets are never read.
 - **`-AdInventory`:** a JSON inventory of the VPN's AD groups and certificate
   templates, in the format below. Any read-only collector can produce it.
   `Tests\Fixtures\ADInventory.sample.json` in the repository is a complete example.
 
 Without a source, the sheets that need it print as headed placeholders.
+
+Two optional parameters add to the cover's **NPS server** block:
+- **`-RadiusSourceIp`:** the address the FortiGate sends RADIUS from, as NPS sees
+  it (the interface facing the NPS server). It is checked against the RADIUS
+  clients in `ias.xml`, along with the `set source-ip` of each RADIUS server the
+  tunnel's user groups match on. NPS silently drops requests from an address that
+  isn't a RADIUS client, so a miss, or a disabled client, is raised as a Check.
+- **`-NpsFacts`:** label/value pairs shown first in that block, such as the
+  server name or NPS Extension version (`[ordered]@{ Server = 'NPS01' }`).
 
 ### AD inventory format (`SchemaVersion` 1)
 

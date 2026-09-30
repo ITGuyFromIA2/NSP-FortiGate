@@ -1,6 +1,6 @@
 @{
     RootModule = 'NSP.FortiGate.psm1'
-    ModuleVersion = '0.1.0'
+    ModuleVersion = '0.2.0'
     GUID = '70c15a8c-ba07-4d65-986d-54b54c501991'
     Author = 'Network Systems Plus'
     CompanyName = 'Network Systems Plus'
@@ -23,7 +23,7 @@
             Tags = @('FortiGate', 'FortiOS', 'Firewall', 'VPN', 'IPsec', 'NPS', 'RADIUS', 'Documentation', 'Report', 'Excel', 'Windows')
             ProjectUri = 'https://github.com/ITGuyFromIA2/NSP-FortiGate'
             LicenseUri = 'https://github.com/ITGuyFromIA2/NSP-FortiGate/blob/main/LICENSE'
-            ReleaseNotes = 'Initial public release: FortiGate config parsing to CSV and the VPN access report.'
+            ReleaseNotes = 'VPN report: NPS server block on the cover (-NpsFacts, RADIUS clients from ias.xml) and a Check for RADIUS source addresses that are not NPS RADIUS clients (-RadiusSourceIp, source-ip). See CHANGELOG.md.'
         }
     }
 }

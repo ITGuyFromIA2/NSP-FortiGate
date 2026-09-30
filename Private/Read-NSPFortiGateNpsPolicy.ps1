@@ -4,8 +4,8 @@ function Read-NSPFortiGateNpsPolicy {
         Reads NPS connection request and network policies, with Fortinet VSAs, from ias.xml.
     .DESCRIPTION
         Accepts the live C:\Windows\System32\ias\ias.xml or a 'netsh nps export'
-        file (same schema). Only policy and RADIUS profile nodes are read; the
-        RADIUS client entries, which carry shared secrets, are never touched.
+        file (same schema). Only policy and RADIUS profile nodes are read here; the
+        RADIUS clients are read by Read-NSPFortiGateNpsClient, which skips their shared secrets.
 
         Each policy has Type (ConnectionRequest or NetworkPolicy), Sequence,
         Name, Enabled, Conditions (the raw msNPConstraint strings, ANDed),

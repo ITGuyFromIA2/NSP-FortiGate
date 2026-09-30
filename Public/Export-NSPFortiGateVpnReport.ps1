@@ -7,7 +7,7 @@ function Export-NSPFortiGateVpnReport {
         printout can be separated and cross-referenced, and in the workbook each is its own tab
         (header row frozen and filterable) after an About tab:
 
-          Cover  tunnel settings, sources, checks worth a look, contents
+          Cover  tunnel settings, NPS server, sources, checks worth a look, contents
           1      firewall policies using the tunnel
           2      user groups, the VSA each expects, and the NPS policy that sends it
           3      service groups expanded to protocol/port
@@ -21,7 +21,8 @@ function Export-NSPFortiGateVpnReport {
         Sheets 1-5 need only the FortiGate captures. Sheets 6 and 9 need -NpsConfig, sheets 7 and 8
         need -AdInventory; without them those sheets print as headed placeholders. The Checks list
         on the cover collects mismatches found along the way (VSA case differences, VSAs no
-        FortiGate group matches, shadowed users, peers no template stamps).
+        FortiGate group matches, shadowed users, peers no template stamps, RADIUS source addresses
+        that aren't NPS RADIUS clients).
     .PARAMETER Path
         FortiGate capture files, parsed together (policies, groups, services, addresses, RADIUS,
         peers, IPsec phase1/phase2), or a full configuration backup.
@@ -36,15 +37,25 @@ function Export-NSPFortiGateVpnReport {
         Write the HTML only.
     .PARAMETER NpsConfig
         A copy of the NPS server's ias.xml (C:\Windows\System32\ias\ias.xml) or a 'netsh nps export'.
-        Only policies and profiles are read; RADIUS client entries (shared secrets) are not.
+        Policies, profiles, and each RADIUS client's name, address, and enabled state are read;
+        shared secrets are not.
     .PARAMETER AdInventory
         The ADInventory_*.json written by AD-Manager menu 6.
+    .PARAMETER RadiusSourceIp
+        The address(es) the FortiGate sends RADIUS requests from, as NPS sees them: the interface
+        facing the NPS server, unless 'set source-ip' is configured on the RADIUS server (those are
+        read from the captures and checked too). Each is checked against ias.xml's RADIUS clients.
+    .PARAMETER NpsFacts
+        Label/value pairs shown on the cover under "NPS server", such as the server name or NPS
+        Extension version. Use an ordered dictionary to keep the order. Don't pass secrets.
     .PARAMETER DeviceName
         Defaults to the hostname in the capture's CLI prompt.
     .EXAMPLE
         Export-NSPFortiGateVpnReport -Path .\captures\*.txt -Tunnel 'Dialup-IKEv2' -OutputPath .\Dialup-IKEv2.html
     .EXAMPLE
         Export-NSPFortiGateVpnReport -Path .\captures\*.txt -Tunnel 'Dialup-IKEv2' -NpsConfig .\ias.xml -AdInventory .\ADInventory_example.json -OutputPath .\Dialup-IKEv2.html
+    .EXAMPLE
+        Export-NSPFortiGateVpnReport -Path .\backup.conf -Tunnel 'Dialup-IKEv2' -NpsConfig .\ias.xml -RadiusSourceIp 10.0.0.1 -NpsFacts ([ordered]@{ 'Server' = 'NPS01'; 'NPS Extension' = '1.2.2893.1' }) -OutputPath .\Dialup-IKEv2.html
     #>
     [CmdletBinding()]
     [OutputType([System.IO.FileInfo])]
@@ -56,11 +67,13 @@ function Export-NSPFortiGateVpnReport {
         [switch]$NoExcel,
         [string]$NpsConfig,
         [string]$AdInventory,
+        [string[]]$RadiusSourceIp,
+        [System.Collections.IDictionary]$NpsFacts,
         [string]$DeviceName,
         [string]$Title
     )
 
-    $report = Get-NSPFortiGateVpnReportData -Path $Path -Tunnel $Tunnel -NpsConfig $NpsConfig -AdInventory $AdInventory -DeviceName $DeviceName -Title $Title
+    $report = Get-NSPFortiGateVpnReportData -Path $Path -Tunnel $Tunnel -NpsConfig $NpsConfig -AdInventory $AdInventory -RadiusSourceIp $RadiusSourceIp -NpsFacts $NpsFacts -DeviceName $DeviceName -Title $Title
     $encode = { param($Value) [System.Net.WebUtility]::HtmlEncode([string]$Value) }
     $generated = Get-Date -Format 'yyyy-MM-dd HH:mm'
 
@@ -105,6 +118,11 @@ dd { margin: 0; }
         [void]$html.Append('</dl>')
     }
     [void]$html.Append("<p><strong>$($report.PolicyCount)</strong> firewall policies reference this tunnel.</p>")
+    if ($report.NpsFacts.Count) {
+        [void]$html.Append('<h2>NPS server</h2><dl>')
+        foreach ($key in $report.NpsFacts.Keys) { [void]$html.Append("<dt>$(& $encode $key)</dt><dd>$(& $encode $report.NpsFacts[$key])</dd>") }
+        [void]$html.Append('</dl>')
+    }
     if ($report.Checks.Count) {
         [void]$html.Append('<h2>Checks</h2><ul class="checks">')
         foreach ($check in $report.Checks) { [void]$html.Append("<li>$(& $encode $check)</li>") }
@@ -149,6 +167,7 @@ dd { margin: 0; }
         $about.Add(@{ Item = 'Title'; Detail = $report.Title })
         $about.Add(@{ Item = 'Generated'; Detail = $generated })
         foreach ($key in $report.Facts.Keys) { if ($report.Facts[$key]) { $about.Add(@{ Item = $key; Detail = $report.Facts[$key] }) } }
+        foreach ($key in $report.NpsFacts.Keys) { $about.Add(@{ Item = "NPS: $key"; Detail = $report.NpsFacts[$key] }) }
         foreach ($source in $report.Sources) { $about.Add(@{ Item = 'Source'; Detail = $source }) }
         foreach ($check in $report.Checks) { $about.Add(@{ Item = 'Check'; Detail = $check }) }
         for ($i = 0; $i -lt $report.Sheets.Count; $i++) {

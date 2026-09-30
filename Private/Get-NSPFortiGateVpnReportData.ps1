@@ -3,7 +3,8 @@ function Get-NSPFortiGateVpnReportData {
     .SYNOPSIS
         Builds every sheet of the VPN report as plain data, for HTML and Excel rendering alike.
     .DESCRIPTION
-        Returns Title, DeviceName, TunnelName, Facts (tunnel settings), Sources, Checks (findings
+        Returns Title, DeviceName, TunnelName, Facts (tunnel settings), NpsFacts (the NPS server:
+        -NpsFacts entries plus the RADIUS clients in ias.xml), Sources, Checks (findings
         worth a reader's attention), PolicyCount, and Sheets. Each sheet has Title, Intro, Notes,
         Columns, Rows (hashtables keyed by column; '_class' marks a row), SpanColumns (merged in
         HTML), NoWrapColumns, Empty (text when there are no rows), and Placeholder (text when the
@@ -12,6 +13,10 @@ function Get-NSPFortiGateVpnReportData {
         Sources: FortiGate captures (always), the NPS ias.xml (-NpsConfig: NPS and effective-access
         sheets), and AD-Manager's inventory JSON (-AdInventory: AD tree and certificate template
         sheets, SID names, user counts, and which users an earlier NPS policy shadows).
+
+        With ias.xml, every address the FortiGate sends RADIUS from (-RadiusSourceIp, and the
+        'set source-ip' of each RADIUS server the tunnel's user groups match on) is checked against
+        its RADIUS clients: NPS silently drops requests from an address that isn't one.
     #>
     [CmdletBinding()]
     param(
@@ -19,6 +24,8 @@ function Get-NSPFortiGateVpnReportData {
         [string]$Tunnel,
         [string]$NpsConfig,
         [string]$AdInventory,
+        [string[]]$RadiusSourceIp,
+        [System.Collections.IDictionary]$NpsFacts,
         [string]$DeviceName,
         [string]$Title
     )
@@ -135,6 +142,8 @@ function Get-NSPFortiGateVpnReportData {
     if ($NpsConfig) { $npsPolicies = @(Read-NSPFortiGateNpsPolicy -Path $NpsConfig) }
     $networkPolicies = @($npsPolicies | Where-Object Type -eq 'NetworkPolicy')
     $requestPolicies = @($npsPolicies | Where-Object Type -eq 'ConnectionRequest')
+    $npsClients = @()
+    if ($NpsConfig) { $npsClients = @(Read-NSPFortiGateNpsClient -Path $NpsConfig) }
 
     $ad = $null
     $adBySid = @{}
@@ -578,6 +587,29 @@ function Get-NSPFortiGateVpnReportData {
         # A PSK/EAP tunnel has no certificate or peer group; leave unset settings off the cover.
         foreach ($key in @($facts.Keys)) { if (-not $facts[$key]) { $facts.Remove($key) } }
     }
+    # ---- NPS server: RADIUS clients and the addresses the FortiGate sends from ------------------
+    $npsServer = [ordered]@{}
+    if ($NpsFacts) { foreach ($key in $NpsFacts.Keys) { if ("$($NpsFacts[$key])") { $npsServer[[string]$key] = [string]$NpsFacts[$key] } } }
+    if ($npsClients.Count) {
+        $npsServer['RADIUS clients'] = (@($npsClients | ForEach-Object { "$($_.Name) ($($_.Address)$(if (-not $_.Enabled) { ', disabled' }))" }) -join '; ')
+        $senders = [ordered]@{}
+        foreach ($ip in @($RadiusSourceIp | Where-Object { $_ })) { $senders[$ip.Trim()] = 'given as the RADIUS source address' }
+        $matchServers = @($fgtMatches | Where-Object { $usage.User.Contains($_.Group) -and $_.Server } | ForEach-Object Server | Select-Object -Unique)
+        foreach ($server in (& $entriesOf 'user radius')) {
+            if ($matchServers -notcontains $server.Name) { continue }
+            $sourceIp = & $setting $server 'source-ip'
+            if ($sourceIp -and -not $senders.Contains($sourceIp)) { $senders[$sourceIp] = "source-ip of RADIUS server '$($server.Name)'" }
+        }
+        foreach ($ip in $senders.Keys) {
+            $hits = @($npsClients | Where-Object { Test-NSPFortiGateAddressMatch -Ip $ip -Address $_.Address })
+            if (-not $hits.Count) {
+                $checks.Add("The FortiGate sends RADIUS from $ip ($($senders[$ip])), which is not a RADIUS client in ias.xml. NPS drops its requests without a reply.")
+            } elseif (-not @($hits | Where-Object Enabled).Count) {
+                $checks.Add("The FortiGate sends RADIUS from $ip ($($senders[$ip])), but its RADIUS client '$($hits[0].Name)' is disabled in ias.xml.")
+            }
+        }
+    }
+
     $sources = @("FortiGate captures: $(($files | ForEach-Object Name) -join ', ')")
     if ($NpsConfig) { $sources += "NPS configuration: $(Split-Path -Leaf $NpsConfig) ($($networkPolicies.Count) network policies)" }
     if ($ad) { $sources += "AD inventory: $(Split-Path -Leaf $AdInventory) ($($ad.Domain), collected on $($ad.ComputerName) $(([datetime]$ad.Generated).ToString('yyyy-MM-dd HH:mm')))" }
@@ -587,6 +619,7 @@ function Get-NSPFortiGateVpnReportData {
         DeviceName = $DeviceName
         TunnelName = $tunnelName
         Facts = $facts
+        NpsFacts = $npsServer
         Sources = $sources
         Checks = @($checks | Select-Object -Unique)
         PolicyCount = $policies.Count
