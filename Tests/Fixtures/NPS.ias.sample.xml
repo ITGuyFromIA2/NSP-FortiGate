@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<Root>
+  <Children>
+    <Microsoft_Internet_Authentication_Service name="Microsoft Internet Authentication Service">
+      <Children>
+        <Clients name="Clients">
+          <Children>
+            <Example_FW name="Example-FW">
+              <Properties>
+                <IP_Address xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">192.0.2.1</IP_Address>
+                <Shared_Secret xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">exampleonly-client-secret</Shared_Secret>
+              </Properties>
+            </Example_FW>
+          </Children>
+        </Clients>
+        <Proxy_Policies name="Proxy_Policies">
+          <Children>
+            <From_FortiGate name="From FortiGate">
+              <Properties>
+                <Policy_Enabled xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="boolean">1</Policy_Enabled>
+                <msNPConstraint xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">MATCH("Client-IP-Address=192.0.2.1")</msNPConstraint>
+                <msNPSequence xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="int">1</msNPSequence>
+              </Properties>
+            </From_FortiGate>
+          </Children>
+        </Proxy_Policies>
+        <NetworkPolicy name="NetworkPolicy">
+          <Children>
+            <RADIUS___Staff name="RADIUS - Staff">
+              <Properties>
+                <Policy_Enabled xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="boolean">1</Policy_Enabled>
+                <msNPConstraint xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">MATCH("Client-IP-Address=192.0.2.1")</msNPConstraint>
+                <msNPConstraint xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">USERNTGROUPS("S-1-5-21-1-2-3-3001")</msNPConstraint>
+                <msNPSequence xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="int">2</msNPSequence>
+              </Properties>
+            </RADIUS___Staff>
+            <RADIUS___Contractors name="RADIUS - Contractors">
+              <Properties>
+                <Policy_Enabled xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="boolean">1</Policy_Enabled>
+                <msNPConstraint xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">MATCH("Client-IP-Address=192.0.2.1")</msNPConstraint>
+                <msNPConstraint xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">USERNTGROUPS("S-1-5-21-1-2-3-3003")</msNPConstraint>
+                <msNPSequence xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="int">1</msNPSequence>
+              </Properties>
+            </RADIUS___Contractors>
+            <RADIUS___Retired name="RADIUS - Retired">
+              <Properties>
+                <Policy_Enabled xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="boolean">0</Policy_Enabled>
+                <msNPConstraint xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">USERNTGROUPS("S-1-5-21-1-2-3-3001")</msNPConstraint>
+                <msNPSequence xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="int">3</msNPSequence>
+              </Properties>
+            </RADIUS___Retired>
+          </Children>
+        </NetworkPolicy>
+        <RadiusProfiles name="RadiusProfiles">
+          <Children>
+            <RADIUS___Staff name="RADIUS - Staff">
+              <Properties>
+                <msRADIUSAnyVSA xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">0100003044010Bvpn-staff</msRADIUSAnyVSA>
+              </Properties>
+            </RADIUS___Staff>
+            <RADIUS___Contractors name="RADIUS - Contractors">
+              <Properties>
+                <msRADIUSAnyVSA xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">0100003044010BVPN-STAFF</msRADIUSAnyVSA>
+                <msRADIUSAnyVSA xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">01000030440111vpn-contractors</msRADIUSAnyVSA>
+              </Properties>
+            </RADIUS___Contractors>
+            <RADIUS___Retired name="RADIUS - Retired">
+              <Properties>
+                <msRADIUSAnyVSA xmlns:dt="urn:schemas-microsoft-com:datatypes" dt:dt="string">0100003044010Bvpn-staff</msRADIUSAnyVSA>
+              </Properties>
+            </RADIUS___Retired>
+          </Children>
+        </RadiusProfiles>
+      </Children>
+    </Microsoft_Internet_Authentication_Service>
+  </Children>
+</Root>

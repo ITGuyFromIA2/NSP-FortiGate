@@ -1,0 +1,19 @@
+# Local configuration and credentials
+*.sec
+/Secrets/
+secrets*.psd1
+*.local.ps1
+*.pfx
+*.pem
+
+# Test and build output
+TestResults*.xml
+coverage*.xml
+/.pester/
+/Artifacts/
+*.local.*
+
+# Report output (real customer data)
+*.html
+*.xlsx
+*.csv

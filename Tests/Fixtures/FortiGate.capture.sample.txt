@@ -1,0 +1,170 @@
+EXAMPLE-FW # show firewall policy | grep -f Tunnel
+config firewall policy
+    edit 20
+        set name "VPN to Servers"
+        set uuid 00000000-0000-4000-8000-000000000020
+        set srcintf "Tunnel-VPN" <---
+        set dstintf "port1"
+        set action accept
+        set srcaddr "VPN_Pool"
+        set dstaddr "Server_Group"
+        set schedule "always"
+        set service "Server_Services"
+        set groups "VPN_Staff"
+        set comments "Staff \"server\" access" <---
+    next
+    edit 10
+        set status disable
+        set name "Blocked Legacy"
+        set srcintf "Tunnel-VPN" <---
+        set dstintf "port1"
+        set srcaddr "VPN_Pool"
+        set dstaddr "all"
+        set dstaddr-negate enable
+        set schedule "always"
+        set service "ALL"
+        set groups "VPN_Staff" "Missing_Group"
+    next
+end
+
+EXAMPLE-FW # show firewall address
+config firewall address
+    edit "VPN_Pool"
+        set type iprange
+        set start-ip 192.0.2.10
+        set end-ip 192.0.2.50
+    next
+    edit "Server_A"
+        set subnet 198.51.100.10 255.255.255.255
+    next
+    edit "Server_Net"
+        set subnet 198.51.100.0 255.255.255.0
+    next
+    edit "Unused_Host"
+        set subnet 203.0.113.5 255.255.255.255
+    next
+    edit "Portal"
+        set type fqdn
+        set fqdn "portal.example.com"
+    next
+    edit "Lab Devices"
+        set type mac
+        set macaddr "00:00:5e:00:53:01" "00:00:5e:00:53:02" "00:00:5e:00:53:03" "00:00:5e:00:53:04"
+    next
+    edit "Unknown Clients"
+        set type dynamic
+        set sub-type ems-tag
+    next
+end
+
+EXAMPLE-FW # show firewall addrgrp
+config firewall addrgrp
+    edit "Server_Group"
+        set member "Server_Inner" "Portal"
+    next
+    edit "Server_Inner"
+        set member "Server_Net"
+        set exclude enable
+        set exclude-member "Server_A"
+    next
+end
+
+EXAMPLE-FW # show firewall service custom
+config firewall service custom
+    edit "DNS"
+        set category "Network Services"
+        set tcp-portrange 53
+        set udp-portrange 53
+    next
+    edit "RDP"
+        set tcp-portrange 3389
+    next
+    edit "PING"
+        set protocol ICMP
+        set icmptype 8
+        unset icmpcode
+    next
+    edit "Unused_Svc"
+        set tcp-portrange 8080
+    next
+end
+
+EXAMPLE-FW # show firewall service group
+config firewall service group
+    edit "Server_Services"
+        set member "Remote_Services" "DNS"
+    next
+    edit "Remote_Services"
+        set member "RDP" "PING"
+    next
+end
+
+EXAMPLE-FW # show user group
+config user group
+    edit "VPN_Staff"
+        set member "RADIUS-1"
+        config match
+            edit 1
+                set server-name "RADIUS-1"
+                set group-name "vpn-staff"
+            next
+        end
+    next
+    edit "Unused_Group"
+        set member "RADIUS-1"
+    next
+end
+
+EXAMPLE-FW # show user radius
+config user radius
+    edit "RADIUS-1"
+        set server "radius.example.com"
+        set secret ENC AAAAexampleonlyAAAA
+        set nas-ip 192.0.2.1
+    next
+end
+
+EXAMPLE-FW # show user peergrp
+config user peergrp
+    edit "Staff_Peers"
+        set member "Peer_Staff"
+    next
+    edit "Unused_Peers"
+        set member "Peer_Unused"
+    next
+end
+config user peer
+    edit "Peer_Staff"
+        set ca "CA_Example"
+        set subject "OU=vpn-staff"
+        set mfa-server "RADIUS-1"
+    next
+    edit "Peer_Unused"
+        set ca "CA_Example"
+    next
+end
+
+EXAMPLE-FW # show vpn ipsec phase1-interface
+config vpn ipsec phase1-interface
+    edit "Tunnel-VPN"
+        set type dynamic
+        set interface "wan1"
+        set ike-version 2
+        set psksecret ENC BBBBexampleonlyBBBB
+        set ipv4-name "VPN_Pool"
+        set peertype peergrp
+        set peergrp "Staff_Peers"
+    next
+end
+
+EXAMPLE-FW # show vpn ipsec phase2-interface
+config vpn ipsec phase2-interface
+    edit "Tunnel-VPN-P2"
+        set phase1name "Tunnel-VPN"
+    next
+    edit "Other-P2"
+        set phase1name "Other"
+    next
+end
+
+EXAMPLE-FW #
