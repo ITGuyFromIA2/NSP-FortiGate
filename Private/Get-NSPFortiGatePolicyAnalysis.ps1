@@ -15,7 +15,7 @@ function Get-NSPFortiGatePolicyAnalysis {
     )
 
     $index = Get-NSPFortiGateIndex -Tree $Tree
-    $used = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $used = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $policies = @(Find-NSPFortiGateSection -Section $Tree -Pattern 'firewall policy')
     $showVdom = @($policies | Where-Object { $_.Vdom }).Count -gt 0
 

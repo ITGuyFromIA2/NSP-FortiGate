@@ -256,6 +256,43 @@ try {
     $multiPath = Join-Path $work 'multi.txt'
     [IO.File]::WriteAllLines($multiPath, @('config firewall address', '    edit "Note"', '        set comment "line one', 'line two"', '    next', 'end'))
     Assert-Equal @(ConvertFrom-NSPFortiGateSection -Path $multiPath -Section 'firewall address')[0].Comment "line one`nline two" 'Multi-line quoted value'
+
+    # Tokenizer rules (the batch fast path and the character walk must agree).
+    $tokenCases = [ordered]@{
+        'set a "b c" d'                  = 'set|a|b c|d'
+        'set x ab"c d"e f'               = 'set|x|abc de|f'
+        'set dn "CN=Doe\, John,DC=x"'    = 'set|dn|CN=Doe\, John,DC=x'
+        'set c "say \"hi\" \\ ok"'       = 'set|c|say "hi" \ ok'
+        'set e ""'                       = 'set|e|'
+        'set f "a""b" "c"'               = 'set|f|ab|c'
+        "`tset`tg  h "                   = 'set|g|h'
+    }
+    foreach ($case in $tokenCases.Keys) {
+        $batch = & (Get-Module NSP.FortiGate) { param($t) (Split-NSPFortiGateLineBatch -Text $t)[0] -join '|' } $case
+        $walk = & (Get-Module NSP.FortiGate) { param($t) (Split-NSPFortiGateToken -Text $t).Tokens -join '|' } $case
+        Assert-Equal $batch $tokenCases[$case] "Tokens of [$case]"
+        Assert-Equal $walk $tokenCases[$case] "Split-NSPFortiGateToken agrees on [$case]"
+    }
+    Assert-Equal (& (Get-Module NSP.FortiGate) { $null -eq (Split-NSPFortiGateLineBatch -Text 'set a "open')[0] }) $true 'An open quote is left for the multi-line path'
+
+    # Multi-line values with escapes, a stray quote outside a value, and a value left open at the end.
+    $edgePath = Join-Path $work 'edge.txt'
+    [IO.File]::WriteAllLines($edgePath, @(
+        'FW01 # show vpn certificate ca', 'config vpn certificate ca', '    edit "CA_1"',
+        '        set ca "-----BEGIN CERTIFICATE-----', 'AAAA\"BBBB', '-----END CERTIFICATE-----"', '        set comments "two', 'lines" extra', '    next',
+        '    edit "Odd"', '        comment "not a set line', '        set range "x"', '    next', 'end',
+        'FW01 "prompt # show system global', 'config system global', '    set hostname "FW01"', '    set alias "open at the end', '    here'
+    ))
+    $edgeOutput = @(ConvertFrom-NSPFortiGateConfig -Path $edgePath 3>&1)
+    $edgeWarnings = @($edgeOutput | Where-Object { $_ -is [System.Management.Automation.WarningRecord] })
+    $edgeTree = @($edgeOutput | Where-Object { $_ -isnot [System.Management.Automation.WarningRecord] })
+    $ca = $edgeTree[0].Entries[0].Settings
+    Assert-Equal $ca['ca'][0] "-----BEGIN CERTIFICATE-----`nAAAA`"BBBB`n-----END CERTIFICATE-----" 'Multi-line value unescapes \" inside it'
+    Assert-Equal ($ca['comments'] -join '|') "two`nlines|extra" 'A multi-line value followed by another token'
+    Assert-Equal @($edgeTree[0].Entries[1].Settings['range'])[0] 'x' 'A stray quote on a non-set line does not swallow the next line'
+    Assert-Equal @($edgeTree[1].Settings['hostname'])[0] 'FW01' 'A quote in a prompt does not open a value'
+    Assert-Equal @($edgeTree[1].Settings['alias'])[0] "open at the end`n    here" 'A value left open at the end keeps its text'
+    Assert-Equal @($edgeWarnings | Where-Object { "$_" -like 'Unterminated quoted value starting at line 18*' }).Count 1 'A value left open at the end is warned about'
 } finally {
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 }

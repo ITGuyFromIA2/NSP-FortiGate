@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.1 (2026-09-30)
+
+- Parsing is much faster, with identical output. A 19,000-line configuration
+  backup went from 27 s to 1.5 s on Windows PowerShell 5.1, and from 12 s to
+  under 2 s on PowerShell 7. The VPN report on it went from 33 s to 4 s.
+  - Lines are split by one regex match each, in a single pass over the file,
+    instead of a character loop called once per line.
+  - A multi-line value (such as a certificate) is no longer re-read from its
+    first line each time a line is added.
+  - `[type]::new()` replaces `New-Object`, which is a cmdlet call.
+    `Write-Verbose` is skipped unless verbose output is on.
+- More tests for the tokenizer and multi-line values: escapes, stray quotes,
+  quotes in prompts, and a value left open at the end of the input.
+
 ## 0.2.0 (2026-09-30)
 
 - The VPN report's cover has an **NPS server** block: the RADIUS clients in

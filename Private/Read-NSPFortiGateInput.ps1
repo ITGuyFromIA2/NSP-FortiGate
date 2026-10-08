@@ -14,7 +14,7 @@ function Read-NSPFortiGateInput {
         [AllowEmptyCollection()][AllowEmptyString()][string[]]$Line
     )
 
-    $roots = New-Object System.Collections.Generic.List[object]
+    $roots = [System.Collections.Generic.List[object]]::new()
     if ($Path) {
         foreach ($item in $Path) {
             # Literal first: console capture names often contain [ ] which wildcards would misread.

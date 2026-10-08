@@ -24,7 +24,7 @@ function ConvertFrom-NSPFortiGateConfig {
         [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'Text')][AllowEmptyString()][string[]]$InputObject
     )
 
-    begin { $buffer = New-Object System.Collections.Generic.List[string] }
+    begin { $buffer = [System.Collections.Generic.List[string]]::new() }
     process {
         foreach ($text in $InputObject) { $buffer.AddRange([string[]]($text -split '\r?\n')) }
     }

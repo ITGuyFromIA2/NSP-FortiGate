@@ -33,8 +33,8 @@ function Get-NSPFortiGateVpnReportData {
     $files = @(foreach ($item in $Path) { if (Test-Path -LiteralPath $item) { Get-Item -LiteralPath $item } else { Get-Item -Path $item } })
     $tree = Read-NSPFortiGateInput -Path $Path
     $index = Get-NSPFortiGateIndex -Tree $tree
-    $used = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
-    $checks = New-Object System.Collections.Generic.List[string]
+    $used = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $checks = [System.Collections.Generic.List[string]]::new()
 
     if (-not $DeviceName) {
         foreach ($file in $files) {
@@ -50,7 +50,7 @@ function Get-NSPFortiGateVpnReportData {
     }
 
     # Policies in capture order, limited to the tunnel.
-    $policies = New-Object System.Collections.Generic.List[object]
+    $policies = [System.Collections.Generic.List[object]]::new()
     foreach ($section in (Find-NSPFortiGateSection -Section $tree -Pattern 'firewall policy')) {
         $sequence = 0
         foreach ($entry in $section.Entries) {
@@ -84,7 +84,7 @@ function Get-NSPFortiGateVpnReportData {
         param([string]$Kind, [string[]]$Names, [string]$By)
         foreach ($name in $Names) {
             if (-not $name) { continue }
-            if (-not $usage[$Kind].Contains($name)) { $usage[$Kind][$name] = New-Object System.Collections.Generic.List[string] }
+            if (-not $usage[$Kind].Contains($name)) { $usage[$Kind][$name] = [System.Collections.Generic.List[string]]::new() }
             if (-not $usage[$Kind][$name].Contains($By)) { $usage[$Kind][$name].Add($By) }
         }
     }
@@ -97,7 +97,7 @@ function Get-NSPFortiGateVpnReportData {
         foreach ($key in 'groups', 'users') { if ($settings.Contains($key)) { & $addUse User $settings[$key] $by } }
         foreach ($group in @($settings['groups'])) {
             if (-not $group) { continue }
-            if (-not $policiesByGroup.ContainsKey($group)) { $policiesByGroup[$group] = New-Object System.Collections.Generic.List[object] }
+            if (-not $policiesByGroup.ContainsKey($group)) { $policiesByGroup[$group] = [System.Collections.Generic.List[object]]::new() }
             $policiesByGroup[$group].Add($policy)
         }
     }
@@ -157,7 +157,7 @@ function Get-NSPFortiGateVpnReportData {
         param([string]$Sid)
         if ($adBySid.ContainsKey($Sid)) { return $adBySid[$Sid].Name }
         if (-not $sidCache.ContainsKey($Sid)) {
-            $sidCache[$Sid] = try { (New-Object System.Security.Principal.SecurityIdentifier($Sid)).Translate([System.Security.Principal.NTAccount]).Value -replace '^.*\\', '' } catch { $Sid }
+            $sidCache[$Sid] = try { ([System.Security.Principal.SecurityIdentifier]::new($Sid)).Translate([System.Security.Principal.NTAccount]).Value -replace '^.*\\', '' } catch { $Sid }
         }
         $sidCache[$Sid]
     }
@@ -312,8 +312,8 @@ function Get-NSPFortiGateVpnReportData {
         if (-not $policy.Vsas.Count) { $base + @{ 'VSA returned' = '(none)' } }
         foreach ($vsa in $policy.Vsas) {
             $target = & $vsaTarget $vsa
-            $landsIn = New-Object System.Collections.Generic.List[string]
-            $unlocks = New-Object System.Collections.Generic.List[string]
+            $landsIn = [System.Collections.Generic.List[string]]::new()
+            $unlocks = [System.Collections.Generic.List[string]]::new()
             foreach ($match in $target.Exact) {
                 if ($policiesByGroup.ContainsKey($match.Group)) {
                     $landsIn.Add($match.Group)
@@ -347,7 +347,7 @@ function Get-NSPFortiGateVpnReportData {
     $omittedGroups = 0
     if ($ad) {
         $roles = @{}
-        $addRole = { param([string]$Group, [string]$Role, [int]$Rank) if (-not $roles.ContainsKey($Group)) { $roles[$Group] = @{ Rank = $Rank; Text = New-Object System.Collections.Generic.List[string] } }; $roles[$Group].Text.Add($Role); if ($Rank -lt $roles[$Group].Rank) { $roles[$Group].Rank = $Rank } }
+        $addRole = { param([string]$Group, [string]$Role, [int]$Rank) if (-not $roles.ContainsKey($Group)) { $roles[$Group] = @{ Rank = $Rank; Text = [System.Collections.Generic.List[string]]::new() } }; $roles[$Group].Text.Add($Role); if ($Rank -lt $roles[$Group].Rank) { $roles[$Group].Rank = $Rank } }
         foreach ($policy in $networkPolicies) { foreach ($sid in $policy.GroupSids) { & $addRole (& $sidName $sid) "NPS policy $(& $npsLabel $policy)" $policy.Sequence } }
         foreach ($template in $vpnTemplates) {
             foreach ($principal in @($template.AutoEnroll)) { if (-not (& $isAdminPrincipal $principal.Name)) { & $addRole (& $shortName $principal.Name) "Auto-enrolls $($template.Name)" 100000 } }
@@ -356,7 +356,7 @@ function Get-NSPFortiGateVpnReportData {
         # parents and nested member groups. Drops admin and built-in groups reached only through ACLs.
         $patterns = @($ad.Sources.GroupPattern | Where-Object { $_ })
         if (-not $patterns.Count) { $patterns = @('IKEv2*', 'VPNFW*', 'FGT*') }
-        $relevant = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+        $relevant = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
         foreach ($group in @($ad.Groups)) {
             if ($roles.ContainsKey($group.Name) -or @($patterns | Where-Object { $group.Name -like $_ }).Count) { [void]$relevant.Add($group.Name) }
         }
@@ -459,7 +459,7 @@ function Get-NSPFortiGateVpnReportData {
         if ($Negate) { "NOT $text" } else { $text }
     }
     $accessRows = @()
-    $earlier = New-Object System.Collections.Generic.List[object]
+    $earlier = [System.Collections.Generic.List[object]]::new()
     foreach ($policy in @($networkPolicies | Where-Object Enabled)) {
         $members = if ($ad) { & $usersOfPolicy $policy } else { $null }
         $shadowText = ''
@@ -469,7 +469,7 @@ function Get-NSPFortiGateVpnReportData {
                 foreach ($prior in $earlier) {
                     if ($null -ne $prior.Members -and $prior.Members.ContainsKey($key)) {
                         $label = & $npsLabel $prior.Policy
-                        if (-not $byEarlier.Contains($label)) { $byEarlier[$label] = @{ Prior = $prior.Policy; Names = New-Object System.Collections.Generic.List[string] } }
+                        if (-not $byEarlier.Contains($label)) { $byEarlier[$label] = @{ Prior = $prior.Policy; Names = [System.Collections.Generic.List[string]]::new() } }
                         $byEarlier[$label].Names.Add(($members[$key].Name))
                         break
                     }

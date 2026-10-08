@@ -92,7 +92,7 @@ function Get-NSPFortiGateObjectSummary {
         }
         'firewall service custom' {
             $protocol = & $one 'protocol' 'TCP/UDP/SCTP'
-            $parts = New-Object System.Collections.Generic.List[string]
+            $parts = [System.Collections.Generic.List[string]]::new()
             switch -Regex ($protocol) {
                 '^ICMP6?$' {
                     $text = $protocol

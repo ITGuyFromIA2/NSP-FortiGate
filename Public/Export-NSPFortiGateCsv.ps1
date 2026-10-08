@@ -59,7 +59,7 @@ function Export-NSPFortiGateCsv {
 
     $groups = [ordered]@{}
     foreach ($found in (Find-NSPFortiGateSection -Section $tree -Pattern $Section)) {
-        if (-not $groups.Contains($found.Path)) { $groups[$found.Path] = New-Object System.Collections.Generic.List[object] }
+        if (-not $groups.Contains($found.Path)) { $groups[$found.Path] = [System.Collections.Generic.List[object]]::new() }
         $groups[$found.Path].Add($found)
     }
     if ($groups.Count -eq 0 -and $analysis.PolicyCount -eq 0) { Write-Warning 'None of the requested sections were found in the input.' }

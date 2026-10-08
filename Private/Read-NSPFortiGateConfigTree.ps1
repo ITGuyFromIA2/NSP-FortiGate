@@ -15,25 +15,42 @@ function Read-NSPFortiGateConfigTree {
     [CmdletBinding()]
     param([Parameter(Mandatory)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Line)
 
-    $roots = New-Object System.Collections.Generic.List[object]
-    $stack = New-Object System.Collections.Generic.Stack[object]
-    $keywords = @('config', 'edit', 'set', 'unset', 'append', 'select', 'unselect', 'next', 'end')
+    $roots = [System.Collections.Generic.List[object]]::new()
+    $stack = [System.Collections.Generic.Stack[object]]::new()
+    $keywords = [System.Collections.Generic.HashSet[string]]::new([string[]]@('config', 'edit', 'set', 'unset', 'append', 'select', 'unselect', 'next', 'end'))
     $pending = $null
     $startLine = 0
+    # Write-Verbose is a cmdlet call even when verbose output is off; skip it unless asked for.
+    $verbose = $VerbosePreference -ne 'SilentlyContinue'
+    $logicalLines = @(Join-NSPFortiGateWrappedLine -Line $Line)
+    # Every complete line tokenized up front, in one call ($null where a quote is left open); see
+    # Split-NSPFortiGateLineBatch for why this isn't done line by line here.
+    $texts = [string[]]::new($logicalLines.Count)
+    for ($n = 0; $n -lt $logicalLines.Count; $n++) { $texts[$n] = $logicalLines[$n].Text }
+    $prepared = Split-NSPFortiGateLineBatch -Text $texts
 
-    foreach ($logical in @(Join-NSPFortiGateWrappedLine -Line $Line) + , $null) {
+    for ($n = 0; $n -le $logicalLines.Count; $n++) {
+        $logical = if ($n -lt $logicalLines.Count) { $logicalLines[$n] } else { $null }
         if ($null -ne $logical) {
             if ($null -ne $pending) {
+                # Inside a multi-line quoted value (a certificate): only check whether this line closes it.
+                # Re-walking the whole value on every line made long certificates quadratic.
                 $text = $pending + "`n" + $logical.Text
+                $closed = (Split-NSPFortiGateLineBatch -Text $text)[0]
+                if ($null -eq $closed) { $pending = $text; continue }
+                $parsed = @{ Tokens = $closed; Unterminated = $false }
             } else {
                 $text = $logical.Text
                 $startLine = $logical.LineNumber
-            }
-            $parsed = Split-NSPFortiGateToken -Text $text
-            # Only a set/append line may open a multi-line quoted value; a stray quote in a prompt must not swallow the file.
-            if ($parsed.Unterminated -and ($null -ne $pending -or $text -match '^\s*(set|append)\s')) {
-                $pending = $text
-                continue
+                if ($null -ne $prepared[$n]) {
+                    $parsed = @{ Tokens = $prepared[$n]; Unterminated = $false }
+                } elseif ($text -match '^\s*(set|append)\s') {
+                    # Only a set/append line may open a multi-line quoted value; a stray quote in a prompt must not swallow the file.
+                    $pending = $text
+                    continue
+                } else {
+                    $parsed = Split-NSPFortiGateToken -Text $text
+                }
             }
         } elseif ($null -ne $pending) {
             Write-Warning "Unterminated quoted value starting at line $startLine."
@@ -48,14 +65,14 @@ function Read-NSPFortiGateConfigTree {
         $command = $tokens[0].ToLowerInvariant()
         $top = if ($stack.Count) { $stack.Peek() } else { $null }
 
-        if ($keywords -notcontains $command) {
-            if ($null -ne $top) { Write-Verbose "Skipped unrecognized line $startLine`: $($tokens -join ' ')" }
+        if (-not $keywords.Contains($command)) {
+            if ($verbose -and $null -ne $top) { Write-Verbose "Skipped unrecognized line $startLine`: $($tokens -join ' ')" }
             continue
         }
 
         switch ($command) {
             'config' {
-                if ($tokens.Count -lt 2) { Write-Verbose "Skipped 'config' without a path at line $startLine."; break }
+                if ($tokens.Count -lt 2) { if ($verbose) { Write-Verbose "Skipped 'config' without a path at line $startLine." }; break }
                 $path = ($tokens[1..($tokens.Count - 1)] -join ' ')
                 $vdom = ''
                 if ($null -ne $top) {
@@ -69,21 +86,21 @@ function Read-NSPFortiGateConfigTree {
                     Vdom = $vdom
                     LineNumber = $startLine
                     Settings = [ordered]@{}
-                    Entries = New-Object System.Collections.Generic.List[object]
-                    Sections = New-Object System.Collections.Generic.List[object]
+                    Entries = [System.Collections.Generic.List[object]]::new()
+                    Sections = [System.Collections.Generic.List[object]]::new()
                 }
                 if ($null -eq $top) { $roots.Add($section) } else { $top.Node.Sections.Add($section) }
                 $stack.Push(@{ Kind = 'Section'; Node = $section })
             }
             'edit' {
-                if ($null -eq $top -or $top.Kind -ne 'Section') { Write-Verbose "Skipped 'edit' outside a config block at line $startLine."; break }
+                if ($null -eq $top -or $top.Kind -ne 'Section') { if ($verbose) { Write-Verbose "Skipped 'edit' outside a config block at line $startLine." }; break }
                 $entry = [pscustomobject]@{
                     PSTypeName = 'NSP.FortiGate.ConfigEntry'
                     Name = if ($tokens.Count -gt 1) { $tokens[1] } else { '' }
                     Vdom = $top.Node.Vdom
                     LineNumber = $startLine
                     Settings = [ordered]@{}
-                    Sections = New-Object System.Collections.Generic.List[object]
+                    Sections = [System.Collections.Generic.List[object]]::new()
                 }
                 $top.Node.Entries.Add($entry)
                 $stack.Push(@{ Kind = 'Entry'; Node = $entry; SectionPath = $top.Node.Path })
@@ -100,7 +117,8 @@ function Read-NSPFortiGateConfigTree {
                 $settings = $top.Node.Settings
                 $key = $tokens[1]
                 $values = if ($tokens.Count -gt 2) { $tokens[2..($tokens.Count - 1)] } else { @() }
-                $existing = if ($settings.Contains($key)) { @($settings[$key]) } else { @() }
+                # Only append/unselect need the current value.
+                $existing = if ($command -in 'append', 'unselect' -and $settings.Contains($key)) { @($settings[$key]) } else { @() }
                 switch ($command) {
                     'unset' { $settings[$key] = [string[]]@() }
                     'append' { $settings[$key] = [string[]]($existing + $values) }

@@ -22,7 +22,7 @@ function ConvertTo-NSPFortiGateRow {
     $schema = if ($schemas.Contains($path)) { $schemas[$path] } else { @{ IdColumn = 'Id'; Columns = [ordered]@{}; Defaults = @{} } }
     $childColumns = if ($schema.ChildColumns) { $schema.ChildColumns } else { [ordered]@{} }
 
-    $records = New-Object System.Collections.Generic.List[object]
+    $records = [System.Collections.Generic.List[object]]::new()
     foreach ($instance in $Section) {
         $sequence = 0
         foreach ($entry in $instance.Entries) {
@@ -39,13 +39,13 @@ function ConvertTo-NSPFortiGateRow {
 
     $knownKeys = @($schema.Columns.Values | Where-Object { $null -ne $_ })
     $knownChildren = @($childColumns.Values | ForEach-Object { $_.Section })
-    $reserved = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $reserved = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($name in @('Vdom', 'Sequence', $schema.IdColumn) + @($schema.Columns.Keys) + @($childColumns.Keys)) { [void]$reserved.Add($name) }
 
-    $extraKeys = New-Object System.Collections.Generic.List[string]
-    $seenKeys = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-    $childPaths = New-Object System.Collections.Generic.List[string]
-    $seenChildren = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $extraKeys = [System.Collections.Generic.List[string]]::new()
+    $seenKeys = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $childPaths = [System.Collections.Generic.List[string]]::new()
+    $seenChildren = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($record in $records) {
         foreach ($key in $record.Settings.Keys) {
             if ($knownKeys -notcontains $key -and $seenKeys.Add($key)) { $extraKeys.Add($key) }

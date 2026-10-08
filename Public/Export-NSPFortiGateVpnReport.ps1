@@ -109,7 +109,7 @@ dd { margin: 0; }
 @media print { body { max-width: none; padding: 0; } }
 '@
 
-    $html = New-Object System.Text.StringBuilder
+    $html = [System.Text.StringBuilder]::new()
     [void]$html.Append("<!DOCTYPE html>`n<html lang=""en""><head><meta charset=""utf-8""><title>$(& $encode $report.Title)</title><style>$css</style></head><body>")
     [void]$html.Append("<section><h1>$(& $encode $report.Title)</h1><p class=""meta"">Generated $generated.</p>")
     if ($report.Facts.Count) {
@@ -157,13 +157,13 @@ dd { margin: 0; }
     $OutputPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
     $directory = Split-Path -Parent $OutputPath
     if ($directory -and -not (Test-Path -LiteralPath $directory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
-    [IO.File]::WriteAllText($OutputPath, $html.ToString(), (New-Object System.Text.UTF8Encoding $true))
+    [IO.File]::WriteAllText($OutputPath, $html.ToString(), ([System.Text.UTF8Encoding]::new($true)))
     Get-Item -LiteralPath $OutputPath
 
     if (-not $NoExcel) {
         if (-not $ExcelPath) { $ExcelPath = [IO.Path]::ChangeExtension($OutputPath, '.xlsx') }
         # About tab: what the HTML cover and sheet introductions say, as rows.
-        $about = New-Object System.Collections.Generic.List[hashtable]
+        $about = [System.Collections.Generic.List[hashtable]]::new()
         $about.Add(@{ Item = 'Title'; Detail = $report.Title })
         $about.Add(@{ Item = 'Generated'; Detail = $generated })
         foreach ($key in $report.Facts.Keys) { if ($report.Facts[$key]) { $about.Add(@{ Item = $key; Detail = $report.Facts[$key] }) } }

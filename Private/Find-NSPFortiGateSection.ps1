@@ -20,7 +20,7 @@ function Find-NSPFortiGateSection {
             $candidate
             continue
         }
-        $children = New-Object System.Collections.Generic.List[object]
+        $children = [System.Collections.Generic.List[object]]::new()
         $children.AddRange($candidate.Sections)
         foreach ($entry in $candidate.Entries) { $children.AddRange($entry.Sections) }
         if ($children.Count) { Find-NSPFortiGateSection -Section $children.ToArray() -Pattern $Pattern }

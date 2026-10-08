@@ -58,8 +58,8 @@ function Write-NSPFortiGateXlsx {
         $columns = @($Sheet[$s].Columns)
         $rows = @($Sheet[$s].Rows)
         $widths = @(foreach ($column in $columns) { [math]::Max(8, $column.Length + 2) })
-        $xml = New-Object System.Text.StringBuilder
-        $cells = New-Object System.Text.StringBuilder
+        $xml = [System.Text.StringBuilder]::new()
+        $cells = [System.Text.StringBuilder]::new()
         [void]$cells.Append('<row r="1">')
         for ($c = 0; $c -lt $columns.Count; $c++) {
             [void]$cells.Append("<c r=""$(& $columnName $c)1"" t=""inlineStr"" s=""1""><is><t xml:space=""preserve"">$(& $escape $columns[$c])</t></is></c>")
@@ -97,11 +97,11 @@ function Write-NSPFortiGateXlsx {
     if (Test-Path -LiteralPath $Path) { Remove-Item -LiteralPath $Path -Force }
     $stream = [IO.File]::Open($Path, [IO.FileMode]::CreateNew)
     try {
-        $zip = New-Object System.IO.Compression.ZipArchive($stream, [System.IO.Compression.ZipArchiveMode]::Create)
+        $zip = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Create)
         try {
-            $utf8 = New-Object System.Text.UTF8Encoding $false
+            $utf8 = [System.Text.UTF8Encoding]::new($false)
             foreach ($name in $parts.Keys) {
-                $writer = New-Object System.IO.StreamWriter($zip.CreateEntry($name).Open(), $utf8)
+                $writer = [System.IO.StreamWriter]::new($zip.CreateEntry($name).Open(), $utf8)
                 try { $writer.Write($parts[$name]) } finally { $writer.Dispose() }
             }
         } finally { $zip.Dispose() }

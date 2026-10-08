@@ -13,7 +13,7 @@ function Get-NSPFortiGateIndex {
     $index = @{}
     foreach ($section in (Find-NSPFortiGateSection -Section $Tree -Pattern '*')) {
         $key = "$($section.Vdom)`t$($section.Path)"
-        if (-not $index.ContainsKey($key)) { $index[$key] = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal) }
+        if (-not $index.ContainsKey($key)) { $index[$key] = [System.Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal) }
         foreach ($entry in $section.Entries) { $index[$key][$entry.Name] = $entry }
     }
     $index

@@ -1,6 +1,6 @@
 @{
     RootModule = 'NSP.FortiGate.psm1'
-    ModuleVersion = '0.2.0'
+    ModuleVersion = '0.2.1'
     GUID = '70c15a8c-ba07-4d65-986d-54b54c501991'
     Author = 'Network Systems Plus'
     CompanyName = 'Network Systems Plus'
@@ -23,7 +23,7 @@
             Tags = @('FortiGate', 'FortiOS', 'Firewall', 'VPN', 'IPsec', 'NPS', 'RADIUS', 'Documentation', 'Report', 'Excel', 'Windows')
             ProjectUri = 'https://github.com/ITGuyFromIA2/NSP-FortiGate'
             LicenseUri = 'https://github.com/ITGuyFromIA2/NSP-FortiGate/blob/main/LICENSE'
-            ReleaseNotes = 'VPN report: NPS server block on the cover (-NpsFacts, RADIUS clients from ias.xml) and a Check for RADIUS source addresses that are not NPS RADIUS clients (-RadiusSourceIp, source-ip). See CHANGELOG.md.'
+            ReleaseNotes = 'Parsing is 6-18x faster (a 20,000-line backup: 27 s to 1.5 s on Windows PowerShell 5.1, 12 s to under 2 s on PowerShell 7), with identical output. See CHANGELOG.md.'
         }
     }
 }

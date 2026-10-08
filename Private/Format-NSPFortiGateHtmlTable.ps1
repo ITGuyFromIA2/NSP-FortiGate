@@ -27,7 +27,7 @@ function Format-NSPFortiGateHtmlTable {
     # wrap at their natural joints instead of mid-word, and columns size to those pieces.
     $encodeCell = { param($Value) ([System.Net.WebUtility]::HtmlEncode([string]$Value) -replace '([_./-])', '$1<wbr>') -replace '\r?\n', '<br>' }
 
-    $html = New-Object System.Text.StringBuilder
+    $html = [System.Text.StringBuilder]::new()
     [void]$html.Append('<table><thead><tr>')
     foreach ($column in $Columns) {
         $nowrap = if ($NoWrapColumns -contains $column) { ' class="nw"' } else { '' }
