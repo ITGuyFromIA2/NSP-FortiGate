@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 (2026-10-08)
+
+- CLI builders, moved here from the NSP IPsec CLI builder so other scripts can use them:
+  `New-NSPFortiGateAddressGroupCli` (address objects plus the address group),
+  `New-NSPFortiGateServiceCli` (a custom TCP/UDP service entry) and
+  `New-NSPFortiGatePolicyCli` (a VPN-to-LAN policy entry or its reverse mirror). Output uses LF
+  line endings throughout. A security profile that isn't given is now left out, rather than
+  written as `set ... ""`.
+- Local-user conversion to RADIUS or LDAP: `Get-NSPFortiGateUserInventory` (users, servers and
+  groups with their current members, from a backup or a console capture, multi-VDOM aware) and
+  `New-NSPFortiGateUserConversionCli` (the FortiGate CLI that keeps a group's existing members,
+  plus a per-user AD group snippet).
+
 ## 0.2.1 (2026-09-30)
 
 - Parsing is much faster, with identical output. A 19,000-line configuration

@@ -1,6 +1,6 @@
 @{
     RootModule = 'NSP.FortiGate.psm1'
-    ModuleVersion = '0.2.1'
+    ModuleVersion = '0.3.0'
     GUID = '70c15a8c-ba07-4d65-986d-54b54c501991'
     Author = 'Network Systems Plus'
     CompanyName = 'Network Systems Plus'
@@ -14,6 +14,11 @@
         'Get-NSPFortiGatePolicyAccess'
         'Export-NSPFortiGateCsv'
         'Export-NSPFortiGateVpnReport'
+        'Get-NSPFortiGateUserInventory'
+        'New-NSPFortiGateUserConversionCli'
+        'New-NSPFortiGateAddressGroupCli'
+        'New-NSPFortiGateServiceCli'
+        'New-NSPFortiGatePolicyCli'
     )
     CmdletsToExport = @()
     VariablesToExport = @()
@@ -23,7 +28,7 @@
             Tags = @('FortiGate', 'FortiOS', 'Firewall', 'VPN', 'IPsec', 'NPS', 'RADIUS', 'Documentation', 'Report', 'Excel', 'Windows')
             ProjectUri = 'https://github.com/ITGuyFromIA2/NSP-FortiGate'
             LicenseUri = 'https://github.com/ITGuyFromIA2/NSP-FortiGate/blob/main/LICENSE'
-            ReleaseNotes = 'Parsing is 6-18x faster (a 20,000-line backup: 27 s to 1.5 s on Windows PowerShell 5.1, 12 s to under 2 s on PowerShell 7), with identical output. See CHANGELOG.md.'
+            ReleaseNotes = 'CLI builders (address groups, custom services, VPN firewall policies) and local-user conversion to RADIUS/LDAP (Get-NSPFortiGateUserInventory, New-NSPFortiGateUserConversionCli). See CHANGELOG.md.'
         }
     }
 }

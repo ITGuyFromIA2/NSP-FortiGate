@@ -310,4 +310,22 @@ try {
     if ($_.Exception.Message -eq 'UsedByPolicy without policies should fail.') { throw }
 }
 
+# CLI builders (0.3.0).
+$grp = New-NSPFortiGateAddressGroupCli -GroupName 'VPN_FS' -Member '10.0.0.10', 'files.contoso.com', '10.0.5.0/24', '' -ExistingMemberName 'Old_Obj'
+Assert-Equal $grp ("config firewall address`n    edit `"Subnet_10_0_0_10_32`"`n        set subnet 10.0.0.10 255.255.255.255`n    next`n    edit `"files.contoso.com`"`n        set type fqdn`n        set fqdn `"files.contoso.com`"`n    next`n    edit `"Subnet_10_0_5_0_24`"`n        set subnet 10.0.5.0 255.255.255.0`n    next`nend`n`nconfig firewall addrgrp`n    edit `"VPN_FS`"`n        set member `"Subnet_10_0_0_10_32`" `"files.contoso.com`" `"Subnet_10_0_5_0_24`" `"Old_Obj`"`n    next`nend") 'Address group CLI'
+Assert-Equal ((New-NSPFortiGateAddressGroupCli -GroupName 'Empty') -match 'set member') $false 'Empty group has no set member line'
+Assert-Equal (New-NSPFortiGateServiceCli -Name 'App' -Protocol 'TCP+UDP' -Port '8000-8010') "    edit `"App`"`n        set tcp-portrange 8000-8010`n        set udp-portrange 8000-8010`n    next" 'Service CLI'
+$pol = @{ Name = 'C-SMB'; TunnelInterface = 'IKEv2_Staff'; InternalInterface = 'internal'; TunnelAddress = 'IKEv2_range'; DestinationAddress = 'VPN_FS'; Service = 'SMB', 'DNS'; UserGroup = 'VPN_Staff' }
+$fwd = New-NSPFortiGatePolicyCli @pol -AntivirusProfile 'default'
+Assert-Equal $fwd "edit 0`n    set name `"C-SMB`"`n    set srcintf `"IKEv2_Staff`"`n    set dstintf `"internal`"`n    set action accept`n    set srcaddr `"IKEv2_range`"`n    set dstaddr `"VPN_FS`"`n    set schedule `"always`"`n    set service `"SMB`" `"DNS`"`n    set utm-status enable`n    set av-profile `"default`"`n    set groups `"VPN_Staff`"`nnext" 'Forward policy CLI'
+$rev = New-NSPFortiGatePolicyCli @pol -Reverse -Disabled
+Assert-Equal ($rev -match 'set name "REV-C-SMB"' -and $rev -match 'set srcintf "internal"' -and $rev -match 'set dstaddr "IKEv2_range"' -and $rev -match 'set status disable') $true 'Reverse policy swaps sides'
+Assert-Equal ($rev -match 'set groups|utm-status') $false 'Reverse policy has no groups and, without profiles, no UTM'
+
+# Local-user conversion (0.3.0).
+$inv = Get-NSPFortiGateUserInventory -Path $fixture
+Assert-Equal $inv.Kind 'capture' 'Inventory kind'
+$conv = New-NSPFortiGateUserConversionCli -Usernames 'jdoe', 'LEFT' -TargetType radius -ServerName 'NPS01' -DisabledUsernames 'left' -GroupName 'G' -ExistingGroupMembers 'JDoe', 'bob' -Vdom 'root'
+Assert-Equal $conv.FGT "config vdom`r`n    edit `"root`"`r`n    config user local`r`n        edit `"jdoe`"`r`n            set type radius`r`n            set radius-server `"NPS01`"`r`n        next`r`n        edit `"LEFT`"`r`n            set status disable`r`n            set type radius`r`n            set radius-server `"NPS01`"`r`n        next`r`n    end`r`n`r`n    config user group`r`n        edit `"G`"`r`n            set member `"JDoe`" `"bob`" `"LEFT`"`r`n        next`r`n    end`r`nend" 'User conversion CLI'
+Assert-Equal ($conv.AD -match '\$Members = @\("jdoe", "LEFT"\)') $true 'User conversion AD snippet'
 "$($PSVersionTable.PSVersion): NSP.FortiGate smoke checks passed."

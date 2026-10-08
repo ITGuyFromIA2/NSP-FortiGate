@@ -157,6 +157,29 @@ for line breaks inside Excel cells. Passwords, pre-shared keys, RADIUS secrets,
 and any `ENC` value are written as `<redacted>` unless `-IncludeSecrets` is set.
 Multi-VDOM configurations get a `Vdom` column.
 
+## Generating CLI
+
+These return CLI text to review and paste; nothing is sent to a FortiGate.
+
+```powershell
+# Address objects plus the group holding them (subnets, hosts, FQDNs; existing objects by name).
+New-NSPFortiGateAddressGroupCli -GroupName 'VPN_FileServers' -Member '10.0.0.10', 'files.contoso.com', '10.0.5.0/24'
+
+# One custom service entry, and one VPN-to-LAN policy entry (or its -Reverse mirror).
+New-NSPFortiGateServiceCli -Name 'App-8443' -Protocol TCP -Port 8443
+New-NSPFortiGatePolicyCli -Name 'Contoso-SMB' -TunnelInterface 'IKEv2_Staff' -InternalInterface 'internal' `
+    -TunnelAddress 'IKEv2_Staff_range' -DestinationAddress 'VPN_FileServers' -Service 'SMB' -UserGroup 'VPN_Staff'
+
+# Convert local users to RADIUS: the FortiGate CLI plus a snippet that adds them to AD groups.
+# A user group's current members are kept, because 'set member' replaces the whole list.
+$inv = Get-NSPFortiGateUserInventory -Path .\backup.conf
+$users = @($inv.Users | Where-Object Type -eq 'password' | ForEach-Object Username)
+$group = $inv.Groups | Where-Object Name -eq 'SSLVPN_Users'
+$out = New-NSPFortiGateUserConversionCli -Usernames $users -TargetType radius -ServerName 'NPS01' `
+    -ADGroups 'VPN_Staff' -GroupName $group.Name -ExistingGroupMembers $group.Members
+$out.FGT; $out.AD
+```
+
 ## Adding a section
 
 Every section already exports with its FortiOS setting names. For friendly
