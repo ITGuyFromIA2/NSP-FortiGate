@@ -1,6 +1,6 @@
 @{
     RootModule = 'NSP.FortiGate.psm1'
-    ModuleVersion = '0.3.0'
+    ModuleVersion = '0.3.1'
     GUID = '70c15a8c-ba07-4d65-986d-54b54c501991'
     Author = 'Network Systems Plus'
     CompanyName = 'Network Systems Plus'
@@ -28,7 +28,7 @@
             Tags = @('FortiGate', 'FortiOS', 'Firewall', 'VPN', 'IPsec', 'NPS', 'RADIUS', 'Documentation', 'Report', 'Excel', 'Windows')
             ProjectUri = 'https://github.com/ITGuyFromIA2/NSP-FortiGate'
             LicenseUri = 'https://github.com/ITGuyFromIA2/NSP-FortiGate/blob/main/LICENSE'
-            ReleaseNotes = 'CLI builders (address groups, custom services, VPN firewall policies) and local-user conversion to RADIUS/LDAP (Get-NSPFortiGateUserInventory, New-NSPFortiGateUserConversionCli). See CHANGELOG.md.'
+            ReleaseNotes = '0.3.1: release routine moved to Publish-NSPModule (NSP.RepoTools); no change to the module itself.'
         }
     }
 }

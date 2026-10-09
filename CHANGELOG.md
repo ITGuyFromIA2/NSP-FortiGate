@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 (2026-10-09)
+
+- Release routine: `tools\Publish-ToGallery.ps1` now runs `Publish-NSPModule` from NSP.RepoTools, the checks every NSP module shares (including a client-reference sweep of the Git history). No change to the module itself.
+
 ## 0.3.0 (2026-10-08)
 
 - CLI builders, moved here from the NSP IPsec CLI builder so other scripts can use them:
